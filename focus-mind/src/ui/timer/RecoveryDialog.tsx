@@ -45,7 +45,7 @@ export function RecoveryDialog({ activeSession, timerService, now = () => new Da
   return <div className="dialog-backdrop recovery-backdrop">
     <section className="entity-dialog recovery-dialog" role="dialog" aria-modal="true" aria-label="恢复未结束的计时">
       <header className="dialog-header"><div><span className="eyebrow">需要处理</span><h2>恢复未结束的计时</h2></div></header>
-      <p>检测到应用上次退出时仍在进行的专注记录。请先处理这条记录，再继续使用 Focus Mind。</p>
+      <p>检测到应用上次退出时仍在进行的专注记录。请先处理这条记录，再继续使用土豆栗丝特。</p>
       {manual && <label className="field"><span>结束时间</span><input type="datetime-local" value={endedAt} onChange={(event) => setEndedAt(event.target.value)} required /></label>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <footer className="dialog-actions recovery-actions">

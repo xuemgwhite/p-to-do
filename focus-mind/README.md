@@ -1,6 +1,6 @@
-# Focus Mind
+# 土豆栗丝特
 
-Focus Mind 是一个本地优先的 macOS 主题、目标、任务、日程和专注计时应用。Tauri 桌面版使用 SQLite；普通浏览器运行的是内存预览仓库，刷新页面会恢复演示数据。
+土豆栗丝特是一个本地优先的 macOS 主题、目标、任务、日程和专注计时应用。Tauri 桌面版使用 SQLite；普通浏览器运行的是内存预览仓库，刷新页面会恢复演示数据。
 
 ## 环境要求
 
@@ -24,7 +24,7 @@ pnpm tauri build --debug
 
 桌面数据库位于 Tauri 应用数据目录中的 `focus-mind.db`；macOS 通常为 `~/Library/Application Support/com.focusmind.desktop/`。备份位于应用数据目录下的 `backups/`，启动桌面版时会创建每日备份。浏览器预览不写 SQLite、不创建备份，也不保证刷新后的数据持久化。
 
-若应用发现未结束的专注记录，会在启动时显示恢复对话框，可继续或结束该记录。调试构建产物由 Tauri 输出到 `src-tauri/target/debug/bundle/`（macOS 通常为 `macos/Focus Mind.app`）。
+若应用发现未结束的专注记录，会在启动时显示恢复对话框，可继续或结束该记录。调试构建产物由 Tauri 输出到 `src-tauri/target/debug/bundle/`（macOS 通常为 `macos/土豆栗丝特.app`）。
 
 ## 已知范围
 

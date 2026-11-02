@@ -38,7 +38,7 @@ export function bootstrapApplication(
     const container = document.getElementById('root')
 
     if (!container) {
-      throw new Error('Focus Mind requires a root element.')
+      throw new Error('土豆栗丝特需要一个根元素。')
     }
 
     createRoot(container).render(createElement(App, {

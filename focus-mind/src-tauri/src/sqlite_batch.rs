@@ -102,7 +102,7 @@ pub async fn execute_sqlite_batch(
   statements: Vec<SqliteStatement>,
 ) -> Result<Vec<u64>, String> {
   if database_url != FOCUS_MIND_DATABASE_URL {
-    return Err("unsupported Focus Mind database URL".into());
+    return Err("unsupported 土豆栗丝特 database URL".into());
   }
 
   let database_path = focus_mind_database_path(&app)?;

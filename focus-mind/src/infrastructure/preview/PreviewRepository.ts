@@ -346,6 +346,6 @@ function assertRepositoryConstraints(state: PreviewRepositorySeed): void {
     }
   }
   if (state.focusSessions.filter((session) => session.endedAt === null).length > 1) {
-    throw new Error('Focus Mind allows only one active focus session')
+    throw new Error('土豆栗丝特只允许同时进行一条专注记录')
   }
 }

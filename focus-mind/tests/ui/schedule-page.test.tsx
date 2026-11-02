@@ -172,19 +172,23 @@ describe('SchedulePage week view', () => {
 })
 
 describe('SchedulePage month view and record dialog', () => {
-  it('sorts timed rows first and keeps unfinished untimed work at the bottom of an internal scroller', async () => {
+  it('shows only the earliest focus time for each task and keeps unfinished untimed work last', async () => {
     setup('?view=month&date=2026-07-18')
 
     const cell = await screen.findByTestId('month-cell-2026-07-18')
     const items = within(cell).getAllByTestId(/^month-item-/)
     expect(items[0]).toHaveTextContent('00:00')
-    expect(items[1]).toHaveTextContent('08:15')
+    expect(within(cell).queryByText('08:15')).not.toBeInTheDocument()
+    expect(within(cell).getAllByTestId(/^month-item-session-/)).toHaveLength(1)
     expect(items.at(-1)).toHaveTextContent('逾期但未完成')
     expect(cell).toHaveClass('today')
   })
 
   it('validates, saves, and deletes a focus record, refreshing the visible summary after each change', async () => {
-    const { repository, scheduleService, timerService } = setup('?view=month&date=2026-07-18')
+    const { repository, scheduleService, timerService } = setup('?view=month&date=2026-07-18', {
+      ...seed,
+      focusSessions: seed.focusSessions.filter((session) => session.id === 'session-morning'),
+    })
     const getMonth = vi.spyOn(scheduleService, 'getMonth')
     const updateSession = vi.spyOn(timerService, 'updateSession')
     const deleteSession = vi.spyOn(timerService, 'deleteSession')

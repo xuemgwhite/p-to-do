@@ -27,7 +27,7 @@ export function AppSidebar({ activePage, themes, selectedThemeId, onNavigate, on
   return <aside className="app-sidebar" aria-label="应用侧栏">
     <header className="app-sidebar-brand">
       <span className="app-sidebar-brand-mark" aria-hidden="true"><img src="/app-icon.png" alt="" /></span>
-      <span><strong>Focus Mind</strong><small>PRODUCTIVITY</small></span>
+      <span><strong>土豆栗丝特</strong></span>
     </header>
 
     <nav className="app-sidebar-nav" aria-label="主导航">

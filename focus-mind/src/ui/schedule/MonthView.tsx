@@ -28,7 +28,7 @@ export function MonthView({ schedule, today, onOpenSession }: MonthViewProps) {
       >
         <header>{Number(day.date.slice(8))}</header>
         <div className="month-cell-items">
-          {sortMonthItems(day.items).map((item) => item.kind === 'session'
+          {sortMonthItems(collapseSessionItems(day.items)).map((item) => item.kind === 'session'
             ? <button
                 className="month-item month-session-item"
                 data-testid={`month-item-session-${item.id}`}
@@ -68,6 +68,25 @@ function sortMonthItems(items: MonthScheduleItem[]): MonthScheduleItem[] {
     }
     return left.id.localeCompare(right.id)
   })
+}
+
+function collapseSessionItems(items: MonthScheduleItem[]): MonthScheduleItem[] {
+  const earliestSessionByTask = new Map<string, FocusSessionSegment>()
+  const taskItems: MonthScheduleItem[] = []
+
+  for (const item of items) {
+    if (item.kind === 'task') {
+      taskItems.push(item)
+      continue
+    }
+
+    const earliest = earliestSessionByTask.get(item.taskId)
+    if (earliest === undefined || item.startedAt.localeCompare(earliest.startedAt) < 0) {
+      earliestSessionByTask.set(item.taskId, item)
+    }
+  }
+
+  return [...earliestSessionByTask.values(), ...taskItems]
 }
 
 function formatSegmentTime(segment: FocusSessionSegment): string {

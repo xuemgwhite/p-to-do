@@ -21,7 +21,7 @@ export function ThemeColumn({ themes, selectedId, onSelect, onAdd, onContextMenu
     if (oldIndex >= 0 && newIndex >= 0) await onReorder(arrayMove(themes, oldIndex, newIndex))
   }
   return <aside className="theme-column workspace-column" aria-label="主题栏">
-    <header className="brand"><div className="brand-mark" aria-hidden="true"><img src="/app-icon.png" alt="" /></div><div><strong>Focus Mind</strong><small>PRODUCTIVITY</small></div></header>
+    <header className="brand"><div className="brand-mark" aria-hidden="true"><img src="/app-icon.png" alt="" /></div><div><strong>土豆栗丝特</strong></div></header>
     <nav className="primary-nav" aria-label="主导航"><button type="button" onClick={() => onNavigate('schedule')}><i aria-hidden="true">□</i>日程</button><button type="button" onClick={() => onNavigate('timer')}><i aria-hidden="true">◷</i>计时</button></nav>
     <div className="column-label"><span>主题</span><button className="tiny-add" type="button" aria-label="新增主题" onClick={onAdd}>＋</button></div>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dragEnd}>

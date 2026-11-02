@@ -66,7 +66,7 @@ export class TauriBackupFileAdapter implements BackupFileAdapter {
 
   async chooseExportDestination(suggestedName: string) {
     return save({
-      title: '导出 Focus Mind 备份',
+      title: '导出土豆栗丝特备份',
       defaultPath: suggestedName,
       filters: [{ name: 'SQLite 数据库', extensions: ['db'] }],
     })
@@ -74,7 +74,7 @@ export class TauriBackupFileAdapter implements BackupFileAdapter {
 
   async chooseImportCandidate() {
     return open({
-      title: '导入 Focus Mind 备份',
+      title: '导入土豆栗丝特备份',
       multiple: false,
       directory: false,
       filters: [{ name: 'SQLite 数据库', extensions: ['db'] }],
