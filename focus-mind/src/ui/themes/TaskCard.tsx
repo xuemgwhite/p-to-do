@@ -37,7 +37,7 @@ export function TaskCard({ task, active, completed, onStart, onComplete, onResto
     </div>
     {!completed && <div className="task-meta">
       {active && <span className="tag active-tag">▶ 专注中 <i /></span>}
-      <span className="tag deadline-tag">{formatDate(task.endDate)} 结束</span>
+      {task.endDate.length > 0 && <span className="tag deadline-tag">{formatDate(task.endDate)} 结束</span>}
       {recurrence && <span className="tag repeat-tag">↻ {recurrence}</span>}
     </div>}
   </article>

@@ -129,6 +129,7 @@ export class ScheduleService {
 
     for (const task of catalog.tasks) {
       const hierarchy = hierarchyFor(task, catalog)
+      if (task.startDate.length === 0 || task.endDate.length === 0) continue
       if (task.recurrenceType === 'none') {
         const state = ordinaryStateOnDate(task, date, toLocalDate(now))
         if (state === null) continue

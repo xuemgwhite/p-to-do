@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import type { TaskService } from '../../application/TaskService'
 import { ApplicationError } from '../../application/TaskService'
 import type { TimerService } from '../../application/TimerService'
-import { toLocalDate } from '../../domain/dates'
-import type { FocusSession, Goal, Task, Theme } from '../../domain/models'
+import type { FocusSession, Goal, LocalDate, Task, Theme } from '../../domain/models'
 import type { FocusMindRepository } from '../../ports/FocusMindRepository'
 import { useAppStore, type EntityKind } from '../../state/useAppStore'
 import { DeleteDialog } from '../shared/DeleteDialog'
@@ -111,9 +110,8 @@ export function ThemesPage({ repository, taskService, timerService, now = () => 
     const id = createId()
     if (dialog.kind === 'theme') return { id, name: '', color: '#FF3B30', sortOrder: nextSortOrder(state.themes) } satisfies Theme
     if (dialog.kind === 'goal') return { id, themeId: state.selectedThemeId ?? state.themes[0]?.id ?? '', name: '', sortOrder: nextSortOrder(state.goals.filter((goal) => goal.themeId === state.selectedThemeId)) } satisfies Goal
-    const today = toLocalDate(now())
-    return { id, goalId: state.selectedGoalId ?? state.goals[0]?.id ?? '', name: '', description: '', startDate: today, endDate: today, recurrenceType: 'none', weeklyQuota: null, completedAt: null, sortOrder: nextSortOrder(state.tasks.filter((task) => task.goalId === state.selectedGoalId)) } satisfies Task
-  }, [createId, now, state.entityDialog, state.goals, state.selectedGoalId, state.selectedThemeId, state.tasks, state.themes])
+    return { id, goalId: state.selectedGoalId ?? state.goals[0]?.id ?? '', name: '', description: '', startDate: '' as LocalDate, endDate: '' as LocalDate, recurrenceType: 'none', weeklyQuota: null, completedAt: null, sortOrder: nextSortOrder(state.tasks.filter((task) => task.goalId === state.selectedGoalId)) } satisfies Task
+  }, [createId, state.entityDialog, state.goals, state.selectedGoalId, state.selectedThemeId, state.tasks, state.themes])
 
   async function saveEntity(value: EntityValue) {
     if ('color' in value) await repository.saveTheme(value)

@@ -217,21 +217,23 @@ describe('ThemesPage', () => {
     expect(screen.getByRole('region', { name: '已完成任务' })).toHaveTextContent('整理交互规范')
   })
 
-  it('requires valid task start and end dates before saving', async () => {
+  it('allows an unscheduled task and requires optional dates to be filled together', async () => {
     expect(isValidLocalDate('2026-02-30')).toBe(false)
     expect(isValidLocalDate('not-a-date')).toBe(false)
     expect(isValidLocalDate('2026-02-28')).toBe(true)
-    setup()
+    const repository = setup()
     fireEvent.click(await screen.findByRole('button', { name: '新增任务' }))
-    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '日期校验' } })
-    fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '' } })
+    expect(screen.getByLabelText('开始日期（可选）')).toHaveValue('')
+    expect(screen.getByLabelText('结束日期（可选）')).toHaveValue('')
+    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '暂未安排' } })
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
-    expect(screen.getByText('开始日期必填')).toBeInTheDocument()
+    await waitFor(async () => expect((await repository.listTasks('goal-1')).find((task) => task.name === '暂未安排')).toMatchObject({ startDate: '', endDate: '' }))
 
-    fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '2026-07-18' } })
-    fireEvent.change(screen.getByLabelText('结束日期'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: '新增任务' }))
+    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '日期校验' } })
+    fireEvent.change(screen.getByLabelText('开始日期（可选）'), { target: { value: '2026-07-18' } })
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
-    expect(screen.getByText('结束日期必填')).toBeInTheDocument()
+    expect(screen.getByText('开始日期和结束日期需要同时填写或同时留空')).toBeInTheDocument()
   })
 
   it('disables goal creation and guides the user when no theme exists', async () => {

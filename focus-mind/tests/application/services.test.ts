@@ -506,6 +506,15 @@ describe('TimerService', () => {
 })
 
 describe('ScheduleService', () => {
+  it('keeps an unscheduled task out of day, week, and month schedules', async () => {
+    const unscheduled = { ...ordinaryTask, id: 'task-unscheduled', startDate: '' as const, endDate: '' as const }
+    const service = new ScheduleService(repository({ tasks: [unscheduled] }))
+
+    expect((await service.getDay('2026-07-18', now)).pending).toEqual([])
+    expect((await service.getWeek('2026-07-18', now)).days.flatMap((day) => day.allDay)).toEqual([])
+    expect((await service.getMonth('2026-07-18', now)).days.flatMap((day) => day.items)).toEqual([])
+  })
+
   it('does not repeat an unfinished ordinary task on every viewed date', async () => {
     const scheduledOnce: Task = {
       ...ordinaryTask,

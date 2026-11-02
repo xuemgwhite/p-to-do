@@ -204,6 +204,9 @@ export function resolveTaskTarget(
   }
 
   if (task.recurrenceType === 'none') {
+    if (task.startDate.length === 0 || task.endDate.length === 0) {
+      return { task, occurrence: null }
+    }
     return {
       task: {
         ...task,
@@ -212,6 +215,10 @@ export function resolveTaskTarget(
       },
       occurrence: null,
     }
+  }
+
+  if (task.startDate.length === 0 || task.endDate.length === 0) {
+    throw new ApplicationError('NO_OCCURRENCE_TODAY', '重复任务需要先设置开始和结束日期')
   }
 
   if (today < task.startDate || today > task.endDate) {

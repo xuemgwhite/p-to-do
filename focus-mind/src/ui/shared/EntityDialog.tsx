@@ -40,10 +40,12 @@ export function EntityDialog({ kind, mode, initial, themes, goals, confirmDiscar
     const normalized = { ...value, name } as EntityValue
     if (kind === 'task') {
       const task = normalized as Task
-      if (task.startDate.length === 0) return setError('开始日期必填')
-      if (task.endDate.length === 0) return setError('结束日期必填')
-      if (!isValidLocalDate(task.startDate) || !isValidLocalDate(task.endDate)) return setError('日期格式无效')
-      if (task.endDate < task.startDate) return setError('结束日期不能早于开始日期')
+      const hasStartDate = task.startDate.length > 0
+      const hasEndDate = task.endDate.length > 0
+      if (hasStartDate !== hasEndDate) return setError('开始日期和结束日期需要同时填写或同时留空')
+      if (!hasStartDate && task.recurrenceType !== 'none') return setError('重复任务需要设置开始和结束日期')
+      if (hasStartDate && (!isValidLocalDate(task.startDate) || !isValidLocalDate(task.endDate))) return setError('日期格式无效')
+      if (hasStartDate && task.endDate < task.startDate) return setError('结束日期不能早于开始日期')
       if (task.recurrenceType === 'weekly_quota' && (task.weeklyQuota ?? 0) < 1) return setError('每周次数至少为 1')
     }
     setSaving(true)
@@ -79,7 +81,7 @@ function TaskFields({ task, goals, setTask }: { task: Task; goals: Goal[]; setTa
   return <>
     <label className="field"><span>描述</span><textarea rows={3} value={task.description} onChange={(event) => setTask({ ...task, description: event.target.value })} /></label>
     <label className="field"><span>所属目标</span><select value={task.goalId} onChange={(event) => setTask({ ...task, goalId: event.target.value })}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
-    <div className="field-row"><label className="field"><span>开始日期</span><input type="date" value={task.startDate} onChange={(event) => setTask({ ...task, startDate: event.target.value as LocalDate })} /></label><label className="field"><span>结束日期</span><input type="date" value={task.endDate} onChange={(event) => setTask({ ...task, endDate: event.target.value as LocalDate })} /></label></div>
+    <div className="field-row"><label className="field"><span>开始日期（可选）</span><input type="date" value={task.startDate} onChange={(event) => setTask({ ...task, startDate: event.target.value as LocalDate })} /></label><label className="field"><span>结束日期（可选）</span><input type="date" value={task.endDate} onChange={(event) => setTask({ ...task, endDate: event.target.value as LocalDate })} /></label></div>
     <label className="field"><span>重复类型</span><select value={task.recurrenceType} onChange={(event) => { const recurrenceType = event.target.value as RecurrenceType; setTask({ ...task, recurrenceType, weeklyQuota: recurrenceType === 'weekly_quota' ? (task.weeklyQuota ?? 1) : null }) }}><option value="none">不重复</option><option value="daily">每天</option><option value="weekly_quota">每周完成 N 次</option></select></label>
     {task.recurrenceType === 'weekly_quota' && <label className="field"><span>每周次数</span><input type="number" min="1" max="7" value={task.weeklyQuota ?? 1} onChange={(event) => setTask({ ...task, weeklyQuota: Number(event.target.value) })} /></label>}
   </>

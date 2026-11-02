@@ -29,6 +29,11 @@ const seed: PreviewRepositorySeed = {
       startDate: '2026-07-19', endDate: '2026-07-19', recurrenceType: 'none', weeklyQuota: null,
       completedAt: null, sortOrder: 2,
     },
+    {
+      id: 'task-unscheduled', goalId: 'goal', name: '未安排日期的任务', description: '',
+      startDate: '' as const, endDate: '' as const, recurrenceType: 'none', weeklyQuota: null,
+      completedAt: null, sortOrder: 3,
+    },
   ],
   occurrences: [],
   focusSessions: [{
@@ -69,6 +74,7 @@ describe('TimerPage', () => {
     expect(screen.getByRole('combobox', { name: '选择计时任务' })).toHaveDisplayValue('今天的任务')
     expect(screen.queryByText('今天的专注')).not.toBeInTheDocument()
     expect(screen.queryByText('明天的任务')).not.toBeInTheDocument()
+    expect(screen.queryByText('未安排日期的任务')).not.toBeInTheDocument()
     expect(screen.getAllByText('30 分钟')).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: '开始计时' })).toHaveClass('timer-primary-control')
     expect(screen.getByTestId('elapsed-time')).toHaveClass('timer-digits')
