@@ -169,6 +169,26 @@ describe('SchedulePage week view', () => {
     expect(screen.getByTestId('session-segment-a')).toHaveStyle({ width: '50%' })
     expect(screen.getByTestId('session-segment-b')).toHaveStyle({ width: '50%', left: '50%' })
   })
+
+  it('hides a session time when the timeline block is too short to show it fully', () => {
+    const segment = {
+      kind: 'session' as const,
+      id: 'short', sessionId: 'short', taskId: 'task-overdue', occurrenceId: null,
+      task: seed.tasks[0]!, goal: seed.goals[0]!, theme: seed.themes[0]!, date: '2026-07-18' as const,
+      startedAt: '2026-07-18T01:00:00.000Z', endedAt: '2026-07-18T01:15:00.000Z',
+      sourceStartedAt: '2026-07-18T01:00:00.000Z', sourceEndedAt: '2026-07-18T01:15:00.000Z',
+    }
+    const schedule: WeekSchedule = {
+      from: '2026-07-13', to: '2026-07-19', unboundWeeklyQuota: [], timedSegments: [segment],
+      days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-07-${13 + index}` as const, allDay: [], completed: [] })),
+    }
+
+    render(<WeekView schedule={schedule} today="2026-07-18" onOpenSession={() => undefined} />)
+
+    const block = screen.getByTestId('session-segment-short')
+    expect(block).toHaveTextContent('逾期但未完成')
+    expect(within(block).queryByText('09:00–09:15')).not.toBeInTheDocument()
+  })
 })
 
 describe('SchedulePage month view and record dialog', () => {

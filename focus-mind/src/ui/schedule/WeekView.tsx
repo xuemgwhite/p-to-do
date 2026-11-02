@@ -18,6 +18,7 @@ interface PositionedSegment {
 }
 
 const HOUR_HEIGHT = 60
+const SESSION_TIME_MIN_HEIGHT = 38
 
 export function WeekView({ schedule, today, onOpenSession }: WeekViewProps) {
   const positioned = positionSegments(schedule.timedSegments)
@@ -46,6 +47,7 @@ export function WeekView({ schedule, today, onOpenSession }: WeekViewProps) {
             {positioned.filter((item) => item.segment.date === day.date).map(({ segment, column, columnCount }) => {
               const top = minutesIntoSegmentDay(segment, 'start')
               const bottom = minutesIntoSegmentDay(segment, 'end')
+              const height = Math.max(24, bottom - top)
               const left = column / columnCount * 100
               return <button
                 key={segment.id}
@@ -55,7 +57,7 @@ export function WeekView({ schedule, today, onOpenSession }: WeekViewProps) {
                 aria-label={`专注记录 ${segment.task.name} ${formatSegmentTime(segment)}`}
                 style={{
                   top,
-                  height: Math.max(24, bottom - top),
+                  height,
                   left: `${left}%`,
                   width: `${100 / columnCount}%`,
                   '--session-color': segment.theme.color,
@@ -63,7 +65,7 @@ export function WeekView({ schedule, today, onOpenSession }: WeekViewProps) {
                   color: darkenHex(segment.theme.color, .42),
                 } as React.CSSProperties}
                 onClick={() => onOpenSession(segment)}
-              ><strong>{segment.task.name}</strong><span>{formatSegmentTime(segment)}</span></button>
+              ><strong>{segment.task.name}</strong>{height >= SESSION_TIME_MIN_HEIGHT && <span>{formatSegmentTime(segment)}</span>}</button>
             })}
           </div>)}
         </div>
