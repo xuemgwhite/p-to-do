@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ManualFocusInterval, TaskService, TaskTargetInput } from '../../application/TaskService'
+import type { LocalDate } from '../../domain/models'
 
 interface CompletionDialogProps {
   target: TaskTargetInput
   taskName: string
   now: Date
+  initialDate?: LocalDate
   taskService: TaskService
   onClose: () => void
   onCompleted: () => Promise<void>
 }
 
-export function CompletionDialog({ target, taskName, now, taskService, onClose, onCompleted }: CompletionDialogProps) {
+export function CompletionDialog({ target, taskName, now, initialDate, taskService, onClose, onCompleted }: CompletionDialogProps) {
   const defaultStart = new Date(now.getTime() - 30 * 60_000)
-  const [date, setDate] = useState(formatDate(now))
+  const [date, setDate] = useState(initialDate ?? formatDate(now))
   const [startedTime, setStartedTime] = useState(formatTime(defaultStart))
   const [endedTime, setEndedTime] = useState(formatTime(now))
   const [saving, setSaving] = useState(false)
@@ -28,7 +30,7 @@ export function CompletionDialog({ target, taskName, now, taskService, onClose, 
     const sameDayStart = localDateTime(date, startedTime)
     const interval: ManualFocusInterval = { startedAt: sameDayStart > endedAt ? new Date(sameDayStart.getTime() - 86_400_000) : sameDayStart, endedAt }
     try {
-      await taskService.completeTask(target, endedAt, interval)
+      await taskService.completeTask(target, endedAt, interval, date as LocalDate)
       await onCompleted()
       onClose()
     } catch (caught) {

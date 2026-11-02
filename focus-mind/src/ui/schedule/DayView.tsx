@@ -4,6 +4,7 @@ import type {
   WeeklyQuotaReminder,
 } from '../../application/ScheduleService'
 import type { FocusSession } from '../../domain/models'
+import { recurrenceLabel } from '../../domain/taskLabels'
 
 interface DayViewProps {
   schedule: DaySchedule
@@ -13,13 +14,18 @@ interface DayViewProps {
   onComplete: (item: ScheduleTaskItem) => Promise<void>
   onCompleteReminder: (item: WeeklyQuotaReminder) => Promise<void>
   onRestore: (item: ScheduleTaskItem) => Promise<void>
+  quickTasksEnabled?: boolean
+  onToggleQuickTasks?: () => Promise<void>
 }
 
-export function DayView({ schedule, today, activeSession, onStart, onComplete, onCompleteReminder, onRestore }: DayViewProps) {
+export function DayView({ schedule, today, activeSession, onStart, onComplete, onCompleteReminder, onRestore, quickTasksEnabled = true, onToggleQuickTasks }: DayViewProps) {
   const canStart = schedule.date === today
   return <div className="schedule-day-view">
     <section className="schedule-day-section" role="region" aria-label="待办">
-      <h2>待办</h2>
+      <div className="schedule-day-section-heading">
+        <h2>待办</h2>
+        {onToggleQuickTasks && <button className={`show-quick-tasks-button${quickTasksEnabled ? ' is-enabled' : ''}`} type="button" aria-pressed={quickTasksEnabled} aria-label={`${quickTasksEnabled ? '关闭' : '开启'}悬浮球`} onClick={() => { void onToggleQuickTasks() }}><FloatingIcon /><span>悬浮球</span><i aria-hidden="true"><b /></i></button>}
+      </div>
       <div className="schedule-day-list">
         {schedule.pending.map((item) => <DayTaskCard
           key={item.id}
@@ -68,9 +74,7 @@ function DayTaskCard({ item, active, canStart, onStart, onComplete, onRestore }:
   onRestore: DayViewProps['onRestore']
 }) {
   const completed = item.state === 'completed'
-  const recurrence = item.task.recurrenceType === 'daily'
-    ? '每天'
-    : item.task.recurrenceType === 'weekly_quota' ? `每周 ${item.task.weeklyQuota ?? 0} 次` : null
+  const recurrence = recurrenceLabel(item.task)
   return <article
     className={`schedule-task-card${completed ? ' completed' : ''}${active ? ' active' : ''}`}
     data-testid={`schedule-task-${item.id}`}
@@ -135,3 +139,5 @@ function formatDate(date: string): string {
   const [, month, day] = date.split('-')
   return `${Number(month)}月${Number(day)}日`
 }
+
+function FloatingIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg> }

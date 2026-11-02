@@ -1,6 +1,7 @@
 export type Id = string
 export type LocalDate = `${number}-${number}-${number}`
 export type RecurrenceType = 'none' | 'daily' | 'weekly_quota'
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 export type CompletionState = 'pending' | 'completed'
 
 export interface Theme {
@@ -26,6 +27,7 @@ export interface Task {
   endDate: LocalDate
   recurrenceType: RecurrenceType
   weeklyQuota: number | null
+  excludedWeekdays?: Weekday[]
   completedAt: string | null
   sortOrder: number
 }

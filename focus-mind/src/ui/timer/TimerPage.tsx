@@ -11,6 +11,7 @@ interface TimerPageProps {
   timerService: TimerService
   scheduleService: ScheduleService
   now?: () => Date
+  refreshSignal?: number
 }
 
 interface TimerState {
@@ -22,7 +23,7 @@ interface TimerState {
 
 const systemNow = () => new Date()
 
-export function TimerPage({ timerService, scheduleService, now = systemNow }: TimerPageProps) {
+export function TimerPage({ timerService, scheduleService, now = systemNow, refreshSignal = 0 }: TimerPageProps) {
   const [state, setState] = useState<TimerState | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [displayNow, setDisplayNow] = useState(Date.now())
@@ -43,10 +44,14 @@ export function TimerPage({ timerService, scheduleService, now = systemNow }: Ti
     const taskNames = Object.fromEntries((await Promise.all(taskIds.map(async (taskId) => [taskId, await timerService.getTaskName(taskId)] as const)))
       .filter((entry): entry is readonly [string, string] => entry[1] !== null))
     setState({ candidates, active, records, taskNames })
-    setSelectedId((current) => current ?? candidateIdForSession(candidates, active) ?? candidates[0]?.id ?? null)
+    setSelectedId((current) => {
+      const requestedTaskId = new URLSearchParams(window.location.search).get('timerTask')
+      const requested = requestedTaskId === null ? null : candidates.find((candidate) => candidate.task.id === requestedTaskId)?.id ?? null
+      return requested ?? current ?? candidateIdForSession(candidates, active) ?? candidates[0]?.id ?? null
+    })
   }, [now, scheduleService, timerService, today])
 
-  useEffect(() => { void refresh().catch((caught) => setError(messageFor(caught))) }, [refresh])
+  useEffect(() => { void refresh().catch((caught) => setError(messageFor(caught))) }, [refresh, refreshSignal])
   useEffect(() => {
     if (state?.active === null || state?.active === undefined) return
     setDisplayNow(Date.now())
@@ -65,6 +70,7 @@ export function TimerPage({ timerService, scheduleService, now = systemNow }: Ti
       if (activeMatchesSelected) await timerService.stop(now())
       else await timerService.start({ taskId: selected.task.id, occurrenceId: occurrenceIdFor(selected) }, now())
       await refresh()
+      await notifyQuickTimerChanged()
     } catch (caught) {
       setError(messageFor(caught))
     }
@@ -165,3 +171,9 @@ function PlayIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d
 function StopIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7V7Z" /></svg> }
 
 function messageFor(error: unknown): string { return error instanceof Error ? error.message : '操作失败，请重试' }
+
+async function notifyQuickTimerChanged() {
+  if (!('__TAURI_INTERNALS__' in window)) return
+  const { emitTo } = await import('@tauri-apps/api/event')
+  await emitTo('quick-tasks', 'main-timer-changed')
+}

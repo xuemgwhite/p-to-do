@@ -12,15 +12,17 @@ it('shows preview mode only in browser preview', async () => {
   expect(screen.getByText('预览模式')).toBeInTheDocument()
   expect(await screen.findByText('日程')).toBeInTheDocument()
   expect(screen.getByText('计时')).toBeInTheDocument()
+  expect(screen.getByText('统计')).toBeInTheDocument()
 })
 
-it('opens schedule and timer from the visible navigation', async () => {
+it('opens schedule, timer, and statistics from the visible navigation', async () => {
   render(<App runtimeMode="preview" />)
 
   const navigation = await screen.findByRole('navigation', { name: '主导航' })
   expect(screen.getAllByRole('navigation', { name: '主导航' })).toHaveLength(1)
   expect(screen.getByTitle('日程图标')).toBeInTheDocument()
   expect(screen.getByTitle('计时图标')).toBeInTheDocument()
+  expect(screen.getByTitle('统计图标')).toBeInTheDocument()
 
   fireEvent.click(within(navigation).getByRole('button', { name: '日程' }))
   expect(await screen.findByRole('heading', { name: /星期/ })).toBeInTheDocument()
@@ -31,6 +33,11 @@ it('opens schedule and timer from the visible navigation', async () => {
   expect(await screen.findByRole('region', { name: '计时控制' })).toBeInTheDocument()
   expect(screen.getAllByRole('navigation', { name: '主导航' })).toHaveLength(1)
   expect(screen.getByRole('button', { name: '计时' })).toHaveAttribute('aria-current', 'page')
+
+  fireEvent.click(screen.getByRole('button', { name: '统计' }))
+  expect(await screen.findByRole('heading', { name: '统计' })).toBeInTheDocument()
+  expect(screen.getByRole('group', { name: '统计周期' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '统计' })).toHaveAttribute('aria-current', 'page')
 })
 
 it('does not show preview mode in the Tauri shell', async () => {

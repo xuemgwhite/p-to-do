@@ -73,27 +73,78 @@ beforeEach(() => {
 })
 
 describe('SchedulePage day view', () => {
-  it('collects a manual interval before completing a task without focus sessions', async () => {
+  it('automatically adds a 15-minute interval on a past date when only another day has focus time', async () => {
+    const pastTask = {
+      ...seed.tasks[0]!,
+      id: 'task-past',
+      name: '过去任务',
+      startDate: '2026-07-17' as const,
+      endDate: '2026-07-17' as const,
+    }
+    const { repository } = setup('?view=day&date=2026-07-17', {
+      ...seed,
+      tasks: [pastTask],
+      focusSessions: [{
+        id: 'session-today',
+        taskId: pastTask.id,
+        occurrenceId: null,
+        startedAt: '2026-07-18T00:00:00.000Z',
+        endedAt: '2026-07-18T00:30:00.000Z',
+        source: 'timer',
+      }],
+    })
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: '完成 过去任务' }))
+
+    await waitFor(async () => expect((await repository.getTask(pastTask.id))?.completedAt).toBe(new Date('2026-07-17T00:15:00').toISOString()))
+    expect(await repository.listFocusSessionsForTask(pastTask.id)).toHaveLength(2)
+  })
+
+  it('completes a past task directly when that date already has focus time', async () => {
+    const pastTask = {
+      ...seed.tasks[0]!,
+      id: 'task-past-focused',
+      name: '有记录的过去任务',
+      startDate: '2026-07-17' as const,
+      endDate: '2026-07-17' as const,
+    }
+    const pastSession = {
+      id: 'session-past',
+      taskId: pastTask.id,
+      occurrenceId: null,
+      startedAt: '2026-07-17T01:00:00.000Z',
+      endedAt: '2026-07-17T01:30:00.000Z',
+      source: 'timer' as const,
+    }
+    const { repository } = setup('?view=day&date=2026-07-17', {
+      ...seed,
+      tasks: [pastTask],
+      focusSessions: [pastSession],
+    })
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: '完成 有记录的过去任务' }))
+
+    await waitFor(async () => expect((await repository.getTask(pastTask.id))?.completedAt).toBe(pastSession.endedAt))
+    expect(screen.queryByRole('dialog', { name: '完成任务' })).not.toBeInTheDocument()
+  })
+
+  it('automatically records 15 minutes before completing a task without focus sessions', async () => {
     const { repository } = setup('?view=day&date=2026-07-18', { ...seed, focusSessions: [] })
 
     fireEvent.click(await screen.findByRole('checkbox', { name: '完成 逾期但未完成' }))
-    const dialog = await screen.findByRole('dialog', { name: '完成任务' })
-    fireEvent.change(within(dialog).getByLabelText('开始时刻'), { target: { value: '08:00' } })
-    fireEvent.change(within(dialog).getByLabelText('完成时刻'), { target: { value: '08:30' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: '确认完成' }))
 
-    await waitFor(async () => expect((await repository.getTask('task-overdue'))?.completedAt).toBe(new Date('2026-07-18T08:30:00').toISOString()))
-    expect(await repository.listFocusSessionsForTask('task-overdue')).toMatchObject([{ source: 'completion_form' }])
+    await waitFor(async () => expect((await repository.getTask('task-overdue'))?.completedAt).toBe(new Date('2026-07-18T00:15:00').toISOString()))
+    expect(await repository.listFocusSessionsForTask('task-overdue')).toMatchObject([{
+      startedAt: new Date('2026-07-18T00:00:00').toISOString(),
+      endedAt: new Date('2026-07-18T00:15:00').toISOString(),
+      source: 'completion_form',
+    }])
   })
 
   it('directly completes a weekly reminder by binding a slot today and collecting its interval', async () => {
     const { repository } = setup('?view=day&date=2026-07-18', { ...seed, focusSessions: [] })
 
     fireEvent.click(await screen.findByRole('checkbox', { name: '完成 每周阅读' }))
-    const dialog = await screen.findByRole('dialog', { name: '完成任务' })
-    fireEvent.change(within(dialog).getByLabelText('开始时刻'), { target: { value: '10:00' } })
-    fireEvent.change(within(dialog).getByLabelText('完成时刻'), { target: { value: '10:30' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: '确认完成' }))
 
     await waitFor(async () => expect(await repository.listOccurrencesForTask('task-weekly')).toMatchObject([
       { boundDate: '2026-07-18', state: 'completed' },

@@ -12,6 +12,8 @@ export async function completeThemeTask({ task, activeSession, completedAt, repo
   timerService: TimerService
 }): Promise<void> {
   if (activeSession?.taskId === task.id) await timerService.stop(completedAt)
-  if (task.recurrenceType !== 'none') await repository.saveTask({ ...task, completedAt: completedAt.toISOString() })
-  else await taskService.completeTask(task.id, completedAt)
+  await taskService.completeTask(task.id, completedAt)
+  if (task.recurrenceType !== 'none') {
+    await repository.saveTask({ ...task, completedAt: completedAt.toISOString() })
+  }
 }

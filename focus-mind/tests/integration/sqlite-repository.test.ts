@@ -119,8 +119,10 @@ describe('SqliteRepository', () => {
 
   beforeEach(async () => {
     database = new DatabaseSync(':memory:')
-    const migrationUrl = new URL('../../src-tauri/migrations/0001_initial.sql', import.meta.url)
-    database.exec(await readFile(fileURLToPath(migrationUrl), 'utf8'))
+    for (const migration of ['0001_initial.sql', '0002_daily_excluded_weekdays.sql']) {
+      const migrationUrl = new URL(`../../src-tauri/migrations/${migration}`, import.meta.url)
+      database.exec(await readFile(fileURLToPath(migrationUrl), 'utf8'))
+    }
     driver = new NodeSqliteDriver(database)
     repository = new SqliteRepository(driver)
     await repository.initialize()
@@ -160,6 +162,16 @@ describe('SqliteRepository', () => {
       const rows = database.prepare('SELECT COUNT(*) AS count FROM ' + table).all() as Array<{ count: number }>
       expect(rows[0]?.count, table).toBe(0)
     }
+  })
+
+  it('persists excluded weekdays for a daily task', async () => {
+    await repository.saveTheme(theme)
+    await repository.saveGoal(goal)
+    const weekdaysTask: Task = { ...task, excludedWeekdays: [0, 6] }
+
+    await repository.saveTask(weekdaysTask)
+
+    expect(await repository.getTask(task.id)).toEqual(weekdaysTask)
   })
 
   it('permits only one active focus session and exposes it', async () => {

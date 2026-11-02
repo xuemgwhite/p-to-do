@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ScheduleService } from '../application/ScheduleService'
+import { StatisticsService } from '../application/StatisticsService'
 import { TaskService } from '../application/TaskService'
 import { TimerService } from '../application/TimerService'
 import type { FocusSession } from '../domain/models'
@@ -11,6 +12,7 @@ import { RecoveryDialog } from '../ui/timer/RecoveryDialog'
 import { TimerPage } from '../ui/timer/TimerPage'
 import { ThemesPage } from '../ui/themes/ThemesPage'
 import { SchedulePage } from '../ui/schedule/SchedulePage'
+import { StatisticsPage } from '../ui/statistics/StatisticsPage'
 import { AppSidebar, type AppPage } from '../ui/layout/AppSidebar'
 import { useAppStore } from '../state/useAppStore'
 import '../styles/global.css'
@@ -21,17 +23,20 @@ interface AppProps {
   taskService?: TaskService
   timerService?: TimerService
   scheduleService?: ScheduleService
+  statisticsService?: StatisticsService
 }
 
-export function App({ runtimeMode, repository, taskService, timerService, scheduleService }: AppProps) {
+export function App({ runtimeMode, repository, taskService, timerService, scheduleService, statisticsService }: AppProps) {
   const fallbackRepository = useMemo(() => new PreviewRepository(), [])
   const resolvedRepository = repository ?? fallbackRepository
   const fallbackTaskService = useMemo(() => new TaskService(resolvedRepository), [resolvedRepository])
   const fallbackTimerService = useMemo(() => new TimerService(resolvedRepository), [resolvedRepository])
   const fallbackScheduleService = useMemo(() => new ScheduleService(resolvedRepository), [resolvedRepository])
+  const fallbackStatisticsService = useMemo(() => new StatisticsService(resolvedRepository), [resolvedRepository])
   const resolvedTimerService = timerService ?? fallbackTimerService
   const [recoverySession, setRecoverySession] = useState<FocusSession | null | undefined>(undefined)
   const [page, setPage] = useState<AppPage>(readPage)
+  const [timerSyncRevision, setTimerSyncRevision] = useState(0)
   const previewNow = useMemo(() => previewClock(runtimeMode), [runtimeMode])
   const themes = useAppStore((state) => state.themes)
   const selectedThemeId = useAppStore((state) => state.selectedThemeId)
@@ -57,6 +62,28 @@ export function App({ runtimeMode, repository, taskService, timerService, schedu
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
+  useEffect(() => {
+    if (runtimeMode !== 'tauri' || !('__TAURI_INTERNALS__' in window)) return
+    let disposed = false
+    let unlisten: (() => void)[] = []
+    void import('@tauri-apps/api/event').then(async ({ listen }) => Promise.all([
+      listen<string>('quick-task-start', (event) => {
+        const params = new URLSearchParams(window.location.search)
+        params.set('page', 'timer')
+        params.set('timerTask', event.payload)
+        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`)
+        setPage('timer')
+      }),
+      listen('quick-timer-changed', () => setTimerSyncRevision((revision) => revision + 1)),
+    ])).then((stops) => {
+      if (disposed) stops.forEach((stop) => stop())
+      else unlisten = stops
+    })
+    return () => {
+      disposed = true
+      unlisten.forEach((stop) => stop())
+    }
+  }, [runtimeMode])
 
   function navigate(next: AppPage) {
     const params = new URLSearchParams(window.location.search)
@@ -101,10 +128,12 @@ export function App({ runtimeMode, repository, taskService, timerService, schedu
       />
       <div className="app-page">
         {page === 'timer'
-          ? <TimerPage timerService={resolvedTimerService} scheduleService={scheduleService ?? fallbackScheduleService} now={previewNow} />
+          ? <TimerPage timerService={resolvedTimerService} scheduleService={scheduleService ?? fallbackScheduleService} now={previewNow} refreshSignal={timerSyncRevision} />
           : page === 'schedule'
-            ? <SchedulePage repository={resolvedRepository} scheduleService={scheduleService ?? fallbackScheduleService} taskService={taskService ?? fallbackTaskService} timerService={resolvedTimerService} now={previewNow} />
-            : <ThemesPage repository={resolvedRepository} taskService={taskService ?? fallbackTaskService} timerService={resolvedTimerService} now={previewNow} embeddedInShell />}
+            ? <SchedulePage repository={resolvedRepository} scheduleService={scheduleService ?? fallbackScheduleService} taskService={taskService ?? fallbackTaskService} timerService={resolvedTimerService} runtimeMode={runtimeMode} now={previewNow} />
+            : page === 'statistics'
+              ? <StatisticsPage statisticsService={statisticsService ?? fallbackStatisticsService} now={previewNow} />
+              : <ThemesPage repository={resolvedRepository} taskService={taskService ?? fallbackTaskService} timerService={resolvedTimerService} now={previewNow} embeddedInShell />}
       </div>
       {runtimeMode === 'preview' && <span className="preview-badge">预览模式</span>}
       {recoverySession && <RecoveryDialog activeSession={recoverySession} timerService={resolvedTimerService} onRecovered={refreshRecovery} />}
@@ -114,7 +143,7 @@ export function App({ runtimeMode, repository, taskService, timerService, schedu
 
 function readPage(): AppPage {
   const page = new URLSearchParams(window.location.search).get('page')
-  return page === 'schedule' || page === 'timer' ? page : 'themes'
+  return page === 'schedule' || page === 'timer' || page === 'statistics' ? page : 'themes'
 }
 
 function previewClock(runtimeMode: RuntimeMode): () => Date {

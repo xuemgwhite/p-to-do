@@ -15,6 +15,7 @@ import type { TimerService } from '../../application/TimerService'
 import { toLocalDate } from '../../domain/dates'
 import type { FocusSession, LocalDate } from '../../domain/models'
 import type { FocusMindRepository } from '../../ports/FocusMindRepository'
+import type { RuntimeMode } from '../../ports/DesktopPort'
 import { CompletionDialog } from '../shared/CompletionDialog'
 import { FocusSessionDialog } from '../shared/FocusSessionDialog'
 import { DayView } from './DayView'
@@ -33,19 +34,25 @@ interface SchedulePageProps {
   scheduleService: ScheduleService
   taskService: TaskService
   timerService: TimerService
+  runtimeMode?: RuntimeMode
   now?: () => Date
 }
 
 const systemNow = () => new Date()
 
-export function SchedulePage({ repository, scheduleService, taskService, timerService, now = systemNow }: SchedulePageProps) {
+export function SchedulePage({ repository, scheduleService, taskService, timerService, runtimeMode = 'preview', now = systemNow }: SchedulePageProps) {
   const [selection, setSelection] = useState(readSelection)
   const [loaded, setLoaded] = useState<LoadedSchedule | null>(null)
   const [activeSession, setActiveSession] = useState<FocusSession | null>(null)
   const [selectedSession, setSelectedSession] = useState<FocusSessionSegment | null>(null)
-  const [completionTarget, setCompletionTarget] = useState<{ target: TaskTargetInput; name: string } | null>(null)
+  const [completionTarget, setCompletionTarget] = useState<{
+    target: TaskTargetInput
+    name: string
+    completionDate: LocalDate
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [quickTasksEnabled, setQuickTasksEnabled] = useState(true)
   const today = toLocalDate(now())
 
   const refresh = useCallback(async () => {
@@ -75,6 +82,14 @@ export function SchedulePage({ repository, scheduleService, taskService, timerSe
     window.addEventListener('popstate', popState)
     return () => window.removeEventListener('popstate', popState)
   }, [])
+  useEffect(() => {
+    if (runtimeMode !== 'tauri' || !('__TAURI_INTERNALS__' in window)) return
+    let cancelled = false
+    void import('@tauri-apps/api/core').then(({ invoke }) => invoke<boolean>('quick_tasks_visible')).then((visible) => {
+      if (!cancelled) setQuickTasksEnabled(visible)
+    }).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [runtimeMode])
 
   function select(next: { view: ScheduleView; date: LocalDate }) {
     const params = new URLSearchParams(window.location.search)
@@ -111,16 +126,22 @@ export function SchedulePage({ repository, scheduleService, taskService, timerSe
     try {
       const occurrenceId = 'occurrence' in item ? item.occurrence?.id ?? null : undefined
       const target = { taskId: item.task.id, occurrenceId }
-      if (activeSession?.taskId === item.task.id && (occurrenceId === undefined || occurrenceId === null || activeSession.occurrenceId === occurrenceId)) {
+      const completionDate = 'date' in item ? item.date : selection.date
+      if (
+        completionDate === today
+        && activeSession?.taskId === item.task.id
+        && (occurrenceId === undefined || occurrenceId === null || activeSession.occurrenceId === occurrenceId)
+      ) {
         await timerService.stop(now())
       }
-      await taskService.completeTask(target, now())
+      await taskService.completeTask(target, now(), undefined, completionDate)
       await refresh()
     } catch (caught) {
       if (caught instanceof ApplicationError && caught.code === 'MANUAL_SESSION_REQUIRED') {
         setCompletionTarget({
           target: { taskId: item.task.id, occurrenceId: 'occurrence' in item ? item.occurrence?.id : undefined },
           name: item.task.name,
+          completionDate: 'date' in item ? item.date : selection.date,
         })
       } else setError(messageFor(caught))
     }
@@ -130,6 +151,18 @@ export function SchedulePage({ repository, scheduleService, taskService, timerSe
     try {
       await taskService.restoreTask({ taskId: item.task.id, occurrenceId: item.occurrence?.id ?? null })
       await refresh()
+    } catch (caught) {
+      setError(messageFor(caught))
+    }
+  }
+
+  async function toggleQuickTasks() {
+    if (runtimeMode !== 'tauri' || !('__TAURI_INTERNALS__' in window)) return
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      const enabled = !quickTasksEnabled
+      await invoke('set_quick_tasks_enabled', { enabled })
+      setQuickTasksEnabled(enabled)
     } catch (caught) {
       setError(messageFor(caught))
     }
@@ -158,7 +191,7 @@ export function SchedulePage({ repository, scheduleService, taskService, timerSe
         </div>
       </header>
       <div className="schedule-scroll">
-        {loaded?.view === 'day' && selection.view === 'day' && <DayView schedule={loaded.data} today={today} activeSession={activeSession} onStart={start} onComplete={complete} onCompleteReminder={complete} onRestore={restore} />}
+        {loaded?.view === 'day' && selection.view === 'day' && <DayView schedule={loaded.data} today={today} activeSession={activeSession} onStart={start} onComplete={complete} onCompleteReminder={complete} onRestore={restore} quickTasksEnabled={quickTasksEnabled} onToggleQuickTasks={runtimeMode === 'tauri' ? toggleQuickTasks : undefined} />}
         {loaded?.view === 'week' && selection.view === 'week' && <WeekView schedule={loaded.data} today={today} onOpenSession={setSelectedSession} />}
         {loaded?.view === 'month' && selection.view === 'month' && <MonthView schedule={loaded.data} today={today} onOpenSession={setSelectedSession} />}
         {!loading && loaded === null && !error && <p className="schedule-empty">没有日程数据。</p>}
@@ -167,7 +200,7 @@ export function SchedulePage({ repository, scheduleService, taskService, timerSe
     {loading && loaded === null && <div className="loading-state" role="status">正在载入日程…</div>}
     {error && <div className="error-toast" role="alert"><span>{error}</span><button type="button" onClick={() => { setError(null); void refresh() }}>重试</button></div>}
     {selectedSession && <FocusSessionDialog segment={selectedSession} timerService={timerService} now={now} onClose={() => setSelectedSession(null)} onChanged={refresh} />}
-    {completionTarget && <CompletionDialog target={completionTarget.target} taskName={completionTarget.name} now={now()} taskService={taskService} onClose={() => setCompletionTarget(null)} onCompleted={refresh} />}
+    {completionTarget && <CompletionDialog target={completionTarget.target} taskName={completionTarget.name} now={now()} initialDate={completionTarget.completionDate} taskService={taskService} onClose={() => setCompletionTarget(null)} onCompleted={refresh} />}
   </main>
 }
 

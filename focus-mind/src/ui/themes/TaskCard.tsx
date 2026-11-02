@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import type { Task } from '../../domain/models'
+import { recurrenceLabel } from '../../domain/taskLabels'
 
 interface TaskCardProps {
   task: Task
@@ -14,7 +15,7 @@ interface TaskCardProps {
 
 export function TaskCard({ task, active, completed, onStart, onComplete, onRestore, onContextMenu, onKeyboardMove }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
-  const recurrence = task.recurrenceType === 'daily' ? '每天' : task.recurrenceType === 'weekly_quota' ? `每周 ${task.weeklyQuota ?? 0} 次` : null
+  const recurrence = recurrenceLabel(task)
   return <article
     ref={setNodeRef}
     {...attributes}

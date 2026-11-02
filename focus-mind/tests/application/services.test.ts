@@ -86,12 +86,37 @@ describe('TaskService', () => {
     expect(await repo.listOccurrencesForTask(dailyTask.id)).toMatchObject([{ state: 'pending', completedAt: null }])
   })
 
-  it('requires a manual focus interval when completing a target without sessions', async () => {
-    const service = new TaskService(repository(), () => 'manual-session')
+  it('automatically adds a 15-minute midnight session when completing a target without sessions', async () => {
+    const repo = repository()
+    const actualService = new TaskService(repo, () => 'automatic-session')
 
-    await expect(service.completeTask(ordinaryTask.id, now)).rejects.toMatchObject({
-      code: 'MANUAL_SESSION_REQUIRED',
+    await actualService.completeTask(ordinaryTask.id, now)
+
+    expect(await repo.listFocusSessionsForTask(ordinaryTask.id)).toEqual([expect.objectContaining({
+      id: 'automatic-session',
+      startedAt: new Date('2026-07-18T00:00:00').toISOString(),
+      endedAt: new Date('2026-07-18T00:15:00').toISOString(),
+      source: 'completion_form',
+    })])
+  })
+
+  it('places an automatic completion session in the first non-overlapping 15-minute gap', async () => {
+    const otherTask: Task = { ...ordinaryTask, id: 'task-other', name: '其他任务' }
+    const repo = repository({
+      tasks: [ordinaryTask, otherTask],
+      focusSessions: [{
+        id: 'occupied', taskId: otherTask.id, occurrenceId: null,
+        startedAt: new Date('2026-07-18T00:00:00').toISOString(),
+        endedAt: new Date('2026-07-18T00:20:00').toISOString(), source: 'timer',
+      }],
     })
+
+    await new TaskService(repo, () => 'automatic-session').completeTask(ordinaryTask.id, now)
+
+    expect(await repo.listFocusSessionsForTask(ordinaryTask.id)).toMatchObject([{
+      startedAt: new Date('2026-07-18T00:20:00').toISOString(),
+      endedAt: new Date('2026-07-18T00:35:00').toISOString(),
+    }])
   })
 
   it('completes a task directly when a saved session already exists', async () => {
@@ -568,6 +593,29 @@ describe('ScheduleService', () => {
       quota: 2,
       remaining: 2,
     }])
+  })
+
+  it('does not repeat a weekly task as a reminder when it already has an occurrence today', async () => {
+    const weeklyTask: Task = {
+      ...ordinaryTask,
+      id: 'task-weekly-today',
+      name: '每周训练',
+      recurrenceType: 'weekly_quota',
+      weeklyQuota: 3,
+    }
+    const boundToday: TaskOccurrence = {
+      id: 'weekly-today',
+      taskId: weeklyTask.id,
+      periodKey: 'weekly:task-weekly-today:2026-W29:0',
+      plannedDate: null,
+      boundDate: '2026-07-18',
+      state: 'pending',
+      completedAt: null,
+    }
+    const day = await new ScheduleService(repository({ tasks: [weeklyTask], occurrences: [boundToday] })).getDay('2026-07-18', now)
+
+    expect(day.pending.map((item) => item.task.id)).toEqual([weeklyTask.id])
+    expect(day.weeklyQuotaReminders).toEqual([])
   })
 
   it('splits cross-midnight sessions into week segments and keeps month timed rows first', async () => {

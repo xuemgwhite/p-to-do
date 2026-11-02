@@ -124,6 +124,22 @@ describe('ThemesPage', () => {
     expect(screen.getByLabelText('重复类型')).toHaveValue('none')
   })
 
+  it('sets excluded weekdays when creating a daily task', async () => {
+    const repository = setup()
+    fireEvent.click(await screen.findByRole('button', { name: '新增任务' }))
+    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '工作日复盘' } })
+    fireEvent.change(screen.getByLabelText('开始日期（可选）'), { target: { value: '2026-07-20' } })
+    fireEvent.change(screen.getByLabelText('结束日期（可选）'), { target: { value: '2026-07-31' } })
+    fireEvent.change(screen.getByLabelText('重复类型'), { target: { value: 'daily' } })
+
+    expect(screen.getByLabelText('排除周一')).not.toBeChecked()
+    fireEvent.click(screen.getByLabelText('排除周六'))
+    fireEvent.click(screen.getByLabelText('排除周日'))
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    await waitFor(async () => expect((await repository.getTask('new-id'))?.excludedWeekdays).toEqual([0, 6]))
+  })
+
   it('opens edit and delete only through the task context menu and confirms exact impact', async () => {
     const repository = setup()
     await screen.findByText('完成产品原型')
@@ -191,17 +207,16 @@ describe('ThemesPage', () => {
     expect((await repository.getActiveFocusSession())?.id).toBe('active-session')
   })
 
-  it('requests a focus interval before completing and renders completed tasks separately', async () => {
+  it('automatically records 15 minutes before completing and renders completed tasks separately', async () => {
     const repository = setup()
     fireEvent.click(await screen.findByRole('checkbox', { name: '完成 完成产品原型' }))
 
-    const dialog = await screen.findByRole('dialog', { name: '完成任务' })
-    fireEvent.change(within(dialog).getByLabelText('开始时刻'), { target: { value: '08:00' } })
-    fireEvent.change(within(dialog).getByLabelText('完成时刻'), { target: { value: '08:30' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: '确认完成' }))
-
     await waitFor(() => expect(screen.getByRole('region', { name: '已完成任务' })).toHaveTextContent('完成产品原型'))
     expect((await repository.getTask('task-1'))?.completedAt).not.toBeNull()
+    expect(await repository.listFocusSessionsForTask('task-1')).toMatchObject([{
+      startedAt: new Date('2026-07-18T00:00:00').toISOString(),
+      endedAt: new Date('2026-07-18T00:15:00').toISOString(),
+    }])
 
     fireEvent.click(screen.getByRole('checkbox', { name: '恢复 完成产品原型' }))
     await waitFor(async () => expect((await repository.getTask('task-1'))?.completedAt).toBeNull())

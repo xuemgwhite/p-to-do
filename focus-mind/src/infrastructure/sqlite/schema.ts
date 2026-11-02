@@ -29,6 +29,7 @@ export interface TaskRow {
   end_date: Task['endDate']
   recurrence_type: Task['recurrenceType']
   weekly_quota: number | null
+  excluded_weekdays: string
   completed_at: string | null
   sort_order: number
 }
@@ -71,6 +72,13 @@ export function goalFromRow(row: GoalRow): Goal {
 }
 
 export function taskFromRow(row: TaskRow): Task {
+  const excludedWeekdays = [...new Set(row.excluded_weekdays
+    .split(',')
+    .filter((value) => value.length > 0)
+    .map(Number)
+    .filter((value): value is 0 | 1 | 2 | 3 | 4 | 5 | 6 => Number.isInteger(value) && value >= 0 && value <= 6))]
+    .sort((left, right) => left - right)
+
   return {
     id: row.id,
     goalId: row.goal_id,
@@ -80,6 +88,7 @@ export function taskFromRow(row: TaskRow): Task {
     endDate: row.end_date,
     recurrenceType: row.recurrence_type,
     weeklyQuota: row.weekly_quota === null ? null : Number(row.weekly_quota),
+    ...(excludedWeekdays.length > 0 ? { excludedWeekdays } : {}),
     completedAt: row.completed_at,
     sortOrder: Number(row.sort_order),
   }

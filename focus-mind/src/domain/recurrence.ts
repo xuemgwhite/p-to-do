@@ -1,6 +1,6 @@
-import { addDays, format, parseISO, startOfISOWeek } from 'date-fns'
+import { addDays, format, getDay, parseISO, startOfISOWeek } from 'date-fns'
 import { toLocalDate } from './dates'
-import type { LocalDate, Task, TaskOccurrence } from './models'
+import type { LocalDate, Task, TaskOccurrence, Weekday } from './models'
 
 export interface WeeklyQuotaProgress {
   completed: number
@@ -99,7 +99,12 @@ function dailyOccurrences(
 
   for (let date = from; date <= to; date = nextDate(date)) {
     const key = dailyKey(task.id, date)
-    occurrences.push(byKey.get(key) ?? createDailyOccurrence(task.id, key, date))
+    const existingOccurrence = byKey.get(key)
+    if (task.excludedWeekdays?.includes(getDay(parseISO(date)) as Weekday)) {
+      if (existingOccurrence?.state === 'completed') occurrences.push(existingOccurrence)
+      continue
+    }
+    occurrences.push(existingOccurrence ?? createDailyOccurrence(task.id, key, date))
   }
 
   return occurrences

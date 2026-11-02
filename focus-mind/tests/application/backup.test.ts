@@ -28,7 +28,7 @@ class FakeFileAdapter implements BackupFileAdapter {
     this.writeDatabase(DATABASE_PATH, 'current', 0)
   }
 
-  writeDatabase(path: string, payload: string, modifiedAt: number, schemaVersion = 1) {
+  writeDatabase(path: string, payload: string, modifiedAt: number, schemaVersion = 2) {
     this.files.set(path, {
       header: SQLITE_HEADER,
       schemaVersion,

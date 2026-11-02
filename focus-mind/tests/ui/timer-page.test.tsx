@@ -58,6 +58,7 @@ async function settle() {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(now)
+  window.history.replaceState({}, '', '/')
 })
 
 afterEach(() => {
@@ -141,6 +142,14 @@ describe('TimerPage', () => {
     await settle()
     expect(screen.getByTestId('focus-record')).toHaveTextContent('今天的任务')
     expect(screen.queryByText('专注任务')).not.toBeInTheDocument()
+  })
+
+  it('selects the task requested by the floating task window', async () => {
+    window.history.replaceState({}, '', '/?page=timer&timerTask=task-switch')
+    setup()
+
+    await settle()
+    expect(screen.getByRole('combobox', { name: '选择计时任务' })).toHaveDisplayValue('切换后的任务')
   })
 })
 

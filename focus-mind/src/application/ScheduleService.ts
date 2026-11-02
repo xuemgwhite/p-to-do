@@ -184,7 +184,8 @@ export class ScheduleService {
         const hasUnboundPending = occurrences.some(
           (item) => item.state === 'pending' && item.boundDate === null,
         )
-        if (progress.remaining > 0 && hasUnboundPending) {
+        const hasOccurrenceToday = occurrences.some((item) => item.boundDate === date)
+        if (progress.remaining > 0 && hasUnboundPending && !hasOccurrenceToday) {
           weeklyQuotaReminders.push({
             id: `weekly-reminder:${task.id}:${weekStart}`,
             task,

@@ -121,7 +121,7 @@ export class SqliteRepository implements FocusMindRepository {
 
   async listTasks(goalId: Id): Promise<Task[]> {
     const rows = await this.select<TaskRow>(
-      'SELECT id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, completed_at, sort_order FROM tasks WHERE goal_id = ? ORDER BY sort_order, id',
+      'SELECT id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, excluded_weekdays, completed_at, sort_order FROM tasks WHERE goal_id = ? ORDER BY sort_order, id',
       [goalId],
     )
     return rows.map(taskFromRow)
@@ -129,7 +129,7 @@ export class SqliteRepository implements FocusMindRepository {
 
   async getTask(id: Id): Promise<Task | null> {
     const rows = await this.select<TaskRow>(
-      'SELECT id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, completed_at, sort_order FROM tasks WHERE id = ? LIMIT 1',
+      'SELECT id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, excluded_weekdays, completed_at, sort_order FROM tasks WHERE id = ? LIMIT 1',
       [id],
     )
     return rows[0] ? taskFromRow(rows[0]) : null
@@ -151,7 +151,7 @@ export class SqliteRepository implements FocusMindRepository {
 
   async saveTask(task: Task): Promise<void> {
     await this.execute(
-      "INSERT INTO tasks (id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, completed_at, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET goal_id = excluded.goal_id, name = excluded.name, description = excluded.description, start_date = excluded.start_date, end_date = excluded.end_date, recurrence_type = excluded.recurrence_type, weekly_quota = excluded.weekly_quota, completed_at = excluded.completed_at, sort_order = excluded.sort_order, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+      "INSERT INTO tasks (id, goal_id, name, description, start_date, end_date, recurrence_type, weekly_quota, excluded_weekdays, completed_at, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET goal_id = excluded.goal_id, name = excluded.name, description = excluded.description, start_date = excluded.start_date, end_date = excluded.end_date, recurrence_type = excluded.recurrence_type, weekly_quota = excluded.weekly_quota, excluded_weekdays = excluded.excluded_weekdays, completed_at = excluded.completed_at, sort_order = excluded.sort_order, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
       [
         task.id,
         task.goalId,
@@ -161,6 +161,7 @@ export class SqliteRepository implements FocusMindRepository {
         task.endDate,
         task.recurrenceType,
         task.weeklyQuota,
+        (task.excludedWeekdays ?? []).join(','),
         task.completedAt,
         task.sortOrder,
       ],

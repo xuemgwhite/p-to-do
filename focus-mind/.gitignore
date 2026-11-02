@@ -19,6 +19,7 @@ dist-ssr
 *.sqlite3-*
 backups/
 backup/
+scripts/xiaohongshu-demo.sql
 
 # Editor directories and files
 .vscode/*

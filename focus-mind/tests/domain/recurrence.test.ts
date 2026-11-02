@@ -49,6 +49,51 @@ describe('recurrence', () => {
     ])
   })
 
+  it('does not generate daily occurrences on excluded weekdays', () => {
+    const task: Task = {
+      ...dailyTask,
+      startDate: '2026-07-20',
+      endDate: '2026-07-26',
+      excludedWeekdays: [0, 6],
+    }
+
+    const items = occurrencesForRange(task, [], '2026-07-20', '2026-07-26', '2026-07-20')
+
+    expect(items.map((item) => item.plannedDate)).toEqual([
+      '2026-07-20',
+      '2026-07-21',
+      '2026-07-22',
+      '2026-07-23',
+      '2026-07-24',
+    ])
+  })
+
+  it('keeps a completed occurrence when its weekday is later excluded', () => {
+    const original = occurrencesForRange(
+      { ...dailyTask, startDate: '2026-07-20', endDate: '2026-07-26' },
+      [],
+      '2026-07-20',
+      '2026-07-26',
+      '2026-07-20',
+    )
+    const saturday = original.find((item) => item.plannedDate === '2026-07-25')!
+    const completedSaturday: TaskOccurrence = {
+      ...saturday,
+      state: 'completed',
+      completedAt: '2026-07-25T10:00:00+08:00',
+    }
+
+    const items = occurrencesForRange(
+      { ...dailyTask, startDate: '2026-07-20', endDate: '2026-07-26', excludedWeekdays: [6] },
+      [...original.filter((item) => item !== saturday), completedSaturday],
+      '2026-07-20',
+      '2026-07-26',
+      '2026-07-20',
+    )
+
+    expect(items.find((item) => item.plannedDate === '2026-07-25')).toEqual(completedSaturday)
+  })
+
   it('generates three undated occurrences for a weekly quota of three', () => {
     const items = occurrencesForRange(weeklyTask(3), [], '2026-07-13', '2026-07-19', '2026-07-13')
 

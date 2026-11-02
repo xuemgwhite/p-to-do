@@ -3,7 +3,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import type { Theme } from '../../domain/models'
 import './app-sidebar.css'
 
-export type AppPage = 'themes' | 'schedule' | 'timer'
+export type AppPage = 'themes' | 'schedule' | 'timer' | 'statistics'
 
 interface AppSidebarProps {
   activePage: AppPage
@@ -39,6 +39,10 @@ export function AppSidebar({ activePage, themes, selectedThemeId, onNavigate, on
         <TimerIcon />
         <span>计时</span>
       </button>
+      <button type="button" aria-current={activePage === 'statistics' ? 'page' : undefined} onClick={() => onNavigate('statistics')}>
+        <StatisticsIcon />
+        <span>统计</span>
+      </button>
     </nav>
 
     <div className="app-sidebar-section-heading"><span>主题</span><button type="button" aria-label="新增主题" onClick={onAddTheme}>＋</button></div>
@@ -61,4 +65,8 @@ function CalendarIcon() {
 
 function TimerIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><title>计时图标</title><circle cx="12" cy="13" r="8"/><path d="M9 2.75h6M12 5v2M18.1 6.9l1.4-1.4M12 10v3.5l2.5 1.5"/><circle className="timer-icon-dot" cx="12" cy="13" r="1"/></svg>
+}
+
+function StatisticsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><title>统计图标</title><path d="M4 19.5V12h4v7.5M10 19.5V7h4v12.5M16 19.5V3.5h4v16M3 19.5h18"/></svg>
 }

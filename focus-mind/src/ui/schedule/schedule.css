@@ -10,7 +10,15 @@
 .schedule-scroll { min-height: 0; flex: 1; overflow: auto; scrollbar-width: none; }
 .schedule-scroll::-webkit-scrollbar { display: none; }
 .schedule-day-view { width: min(100%, 1180px); padding: 42px 44px 80px; }
-.schedule-day-section h2 { margin: 0 0 20px; color: #4f575b; font: 750 14px/1 var(--font-display); }
+.schedule-day-section h2 { margin: 0; color: #4f575b; font: 750 14px/1 var(--font-display); }
+.schedule-day-section-heading { display: flex; min-height: 34px; margin: 0 0 12px; align-items: center; justify-content: space-between; gap: 16px; }
+.show-quick-tasks-button { display: inline-flex; min-height: 32px; padding: 0 12px; align-items: center; gap: 6px; color: #667176; border: 1px solid #dfe4e6; border-radius: 10px; background: white; font-size: 11px; font-weight: 600; cursor: pointer; }
+.show-quick-tasks-button:hover { color: #22292c; border-color: #cbd2d5; background: #fafbfb; }
+.show-quick-tasks-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.show-quick-tasks-button > i { position: relative; width: 25px; height: 14px; margin-left: 2px; border-radius: 999px; background: #d9dfe1; transition: background-color 140ms ease; }
+.show-quick-tasks-button > i b { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: white; transition: transform 140ms ease; }
+.show-quick-tasks-button.is-enabled > i { background: #4f5a5f; }
+.show-quick-tasks-button.is-enabled > i b { transform: translateX(11px); }
 .schedule-day-list { display: grid; gap: 16px; }
 .schedule-day-section + .schedule-day-section { margin-top: 42px; }
 .schedule-task-card { position: relative; overflow: hidden; padding: 25px 28px 24px; border: 1px solid var(--color-outline); border-radius: var(--radius-xl); background: white; }

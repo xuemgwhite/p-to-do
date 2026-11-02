@@ -1,5 +1,5 @@
-import { endOfISOWeek, parseISO, startOfISOWeek } from 'date-fns'
-import { toLocalDate } from '../domain/dates'
+import { addDays, endOfISOWeek, parseISO, startOfISOWeek } from 'date-fns'
+import { startOfLocalDay, toLocalDate } from '../domain/dates'
 import type {
   Goal,
   FocusSession,
@@ -110,32 +110,33 @@ export class TaskService {
     targetInput: TaskTargetInput,
     now: Date = new Date(),
     manualInterval?: ManualFocusInterval,
+    completionDate: LocalDate = toLocalDate(now),
   ): Promise<ResolvedTaskTarget> {
     const target = normalizeTarget(targetInput)
     const task = await requireTask(this.repository, target.taskId)
     const occurrences = await this.repository.listOccurrencesForTask(task.id)
-    const resolved = resolveTaskTarget(task, occurrences, toLocalDate(now), target.occurrenceId)
+    const resolved = resolveTaskTarget(task, occurrences, completionDate, target.occurrenceId)
     const taskSessions = await this.repository.listFocusSessionsForTask(task.id)
-    const relevantSessions = resolved.occurrence === null
-      ? taskSessions
-      : taskSessions.filter((session) => session.occurrenceId === resolved.occurrence?.id)
+    const relevantSessions = taskSessions.filter((session) =>
+      session.occurrenceId === (resolved.occurrence?.id ?? null)
+      && sessionOverlapsDate(session, completionDate, now),
+    )
 
     let completionSession: FocusSession | null = null
     if (relevantSessions.length === 0) {
-      if (manualInterval === undefined) {
-        throw new ApplicationError(
-          'MANUAL_SESSION_REQUIRED',
-          '完成前需要填写实际专注开始和结束时间',
-        )
-      }
-      const startedAt = asDate(manualInterval.startedAt)
-      const endedAt = asDate(manualInterval.endedAt)
-      validateManualInterval(startedAt, endedAt, now, [])
-      const overlappingSessions = await this.repository.listFocusSessions(
-        startedAt.toISOString(),
-        endedAt.toISOString(),
+      const dayStart = startOfLocalDay(completionDate)
+      const dayEnd = addDays(dayStart, 1)
+      const daySessions = await this.repository.listFocusSessions(
+        dayStart.toISOString(),
+        dayEnd.toISOString(),
       )
-      validateManualInterval(startedAt, endedAt, now, overlappingSessions)
+      const { startedAt, endedAt } = manualInterval === undefined
+        ? findAutomaticCompletionInterval(completionDate, now, daySessions)
+        : {
+            startedAt: asDate(manualInterval.startedAt),
+            endedAt: asDate(manualInterval.endedAt),
+          }
+      validateManualInterval(startedAt, endedAt, now, daySessions)
       completionSession = {
         id: this.createId(),
         taskId: task.id,
@@ -146,7 +147,11 @@ export class TaskService {
       }
     }
 
-    const completedAt = now.toISOString()
+    const completedAt = completionSession !== null
+      ? completionSession.endedAt ?? now.toISOString()
+      : completionDate === toLocalDate(now)
+        ? now.toISOString()
+        : completionTimeFromSessions(relevantSessions, completionDate, now).toISOString()
     const completedTarget: ResolvedTaskTarget = resolved.occurrence === null
       ? { task: { ...resolved.task, completedAt }, occurrence: null }
       : {
@@ -191,6 +196,36 @@ export class TaskService {
     })
     return resolved
   }
+}
+
+export function findAutomaticCompletionInterval(
+  date: LocalDate,
+  now: Date,
+  existingSessions: readonly FocusSession[],
+): { startedAt: Date; endedAt: Date } {
+  const duration = 15 * 60_000
+  const dayStart = startOfLocalDay(date)
+  const dayEnd = addDays(dayStart, 1)
+  const latestEnd = date === toLocalDate(now) ? now : dayEnd
+  let cursor = dayStart
+  const occupied = existingSessions
+    .map((session) => ({
+      start: new Date(Math.max(dayStart.getTime(), new Date(session.startedAt).getTime())),
+      end: new Date(Math.min(dayEnd.getTime(), session.endedAt === null ? now.getTime() : new Date(session.endedAt).getTime())),
+    }))
+    .filter((interval) => interval.end > interval.start)
+    .sort((left, right) => left.start.getTime() - right.start.getTime())
+
+  for (const interval of occupied) {
+    if (cursor.getTime() + duration <= interval.start.getTime()) {
+      return { startedAt: cursor, endedAt: new Date(cursor.getTime() + duration) }
+    }
+    if (interval.end > cursor) cursor = interval.end
+  }
+  if (cursor.getTime() + duration <= latestEnd.getTime()) {
+    return { startedAt: cursor, endedAt: new Date(cursor.getTime() + duration) }
+  }
+  throw new ApplicationError('FOCUS_OVERLAP', '当天没有可用的 15 分钟专注时段')
 }
 
 export function resolveTaskTarget(
@@ -310,6 +345,34 @@ function asDate(value: Date | string): Date {
 
 function isValidDate(value: Date): boolean {
   return !Number.isNaN(value.getTime())
+}
+
+function sessionOverlapsDate(
+  session: FocusSession,
+  date: LocalDate,
+  now: Date,
+): boolean {
+  const dayStart = startOfLocalDay(date)
+  const dayEnd = addDays(dayStart, 1)
+  const sessionStart = new Date(session.startedAt)
+  const sessionEnd = session.endedAt === null ? now : new Date(session.endedAt)
+  return sessionStart < dayEnd && sessionEnd > dayStart
+}
+
+function completionTimeFromSessions(
+  sessions: readonly FocusSession[],
+  date: LocalDate,
+  now: Date,
+): Date {
+  const dayEnd = addDays(startOfLocalDay(date), 1)
+  const latestEnd = sessions.reduce(
+    (latest, session) => {
+      const endedAt = session.endedAt === null ? now : new Date(session.endedAt)
+      return endedAt > latest ? endedAt : latest
+    },
+    startOfLocalDay(date),
+  )
+  return latestEnd < dayEnd ? latestEnd : new Date(dayEnd.getTime() - 1)
 }
 
 function sameTask(left: Task, right: Task): boolean {

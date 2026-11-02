@@ -1,6 +1,6 @@
 import type { DesktopPort } from '../../ports/DesktopPort'
 
-const EXPECTED_SCHEMA_VERSION = 1
+const EXPECTED_SCHEMA_VERSION = 2
 const DAILY_BACKUP_LIMIT = 7
 const DAILY_BACKUP_PATTERN = /^focus-mind-\d{4}-\d{2}-\d{2}\.db$/
 

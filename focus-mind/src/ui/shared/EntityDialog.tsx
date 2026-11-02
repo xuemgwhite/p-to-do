@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import type { Goal, LocalDate, RecurrenceType, Task, Theme } from '../../domain/models'
+import type { Goal, LocalDate, RecurrenceType, Task, Theme, Weekday } from '../../domain/models'
 import type { EntityKind, EntityMode } from '../../state/useAppStore'
 import { isValidLocalDate } from './entityValidation'
 
@@ -37,7 +37,7 @@ export function EntityDialog({ kind, mode, initial, themes, goals, confirmDiscar
     event.preventDefault()
     const name = value.name.trim()
     if (name.length === 0) return setError('名称不能为空')
-    const normalized = { ...value, name } as EntityValue
+    let normalized = { ...value, name } as EntityValue
     if (kind === 'task') {
       const task = normalized as Task
       const hasStartDate = task.startDate.length > 0
@@ -47,6 +47,13 @@ export function EntityDialog({ kind, mode, initial, themes, goals, confirmDiscar
       if (hasStartDate && (!isValidLocalDate(task.startDate) || !isValidLocalDate(task.endDate))) return setError('日期格式无效')
       if (hasStartDate && task.endDate < task.startDate) return setError('结束日期不能早于开始日期')
       if (task.recurrenceType === 'weekly_quota' && (task.weeklyQuota ?? 0) < 1) return setError('每周次数至少为 1')
+      if (task.recurrenceType === 'daily' && (task.excludedWeekdays?.length ?? 0) >= 7) return setError('每天重复至少需要保留一天')
+      normalized = {
+        ...task,
+        excludedWeekdays: task.recurrenceType === 'daily' && task.excludedWeekdays?.length
+          ? [...new Set(task.excludedWeekdays)].sort((left, right) => left - right)
+          : undefined,
+      }
     }
     setSaving(true)
     setError(null)
@@ -78,11 +85,39 @@ export function EntityDialog({ kind, mode, initial, themes, goals, confirmDiscar
 }
 
 function TaskFields({ task, goals, setTask }: { task: Task; goals: Goal[]; setTask: (task: Task) => void }) {
+  const weekdays: Array<{ value: Weekday; label: string }> = [
+    { value: 1, label: '周一' },
+    { value: 2, label: '周二' },
+    { value: 3, label: '周三' },
+    { value: 4, label: '周四' },
+    { value: 5, label: '周五' },
+    { value: 6, label: '周六' },
+    { value: 0, label: '周日' },
+  ]
+
+  function toggleExcludedWeekday(weekday: Weekday) {
+    const current = task.excludedWeekdays ?? []
+    const excludedWeekdays = current.includes(weekday)
+      ? current.filter((value) => value !== weekday)
+      : [...current, weekday]
+    setTask({ ...task, excludedWeekdays })
+  }
+
   return <>
     <label className="field"><span>描述</span><textarea rows={3} value={task.description} onChange={(event) => setTask({ ...task, description: event.target.value })} /></label>
     <label className="field"><span>所属目标</span><select value={task.goalId} onChange={(event) => setTask({ ...task, goalId: event.target.value })}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
     <div className="field-row"><label className="field"><span>开始日期（可选）</span><input type="date" value={task.startDate} onChange={(event) => setTask({ ...task, startDate: event.target.value as LocalDate })} /></label><label className="field"><span>结束日期（可选）</span><input type="date" value={task.endDate} onChange={(event) => setTask({ ...task, endDate: event.target.value as LocalDate })} /></label></div>
-    <label className="field"><span>重复类型</span><select value={task.recurrenceType} onChange={(event) => { const recurrenceType = event.target.value as RecurrenceType; setTask({ ...task, recurrenceType, weeklyQuota: recurrenceType === 'weekly_quota' ? (task.weeklyQuota ?? 1) : null }) }}><option value="none">不重复</option><option value="daily">每天</option><option value="weekly_quota">每周完成 N 次</option></select></label>
+    <label className="field"><span>重复类型</span><select value={task.recurrenceType} onChange={(event) => { const recurrenceType = event.target.value as RecurrenceType; setTask({ ...task, recurrenceType, weeklyQuota: recurrenceType === 'weekly_quota' ? (task.weeklyQuota ?? 1) : null, excludedWeekdays: recurrenceType === 'daily' ? task.excludedWeekdays : undefined }) }}><option value="none">不重复</option><option value="daily">每天</option><option value="weekly_quota">每周完成 N 次</option></select></label>
+    {task.recurrenceType === 'daily' && <fieldset className="field excluded-weekdays-field">
+      <legend>排除星期</legend>
+      <p>选中的日期不会生成任务</p>
+      <div className="excluded-weekdays-options">
+        {weekdays.map(({ value, label }) => <label className="excluded-weekday-option" key={value}>
+          <input type="checkbox" checked={task.excludedWeekdays?.includes(value) ?? false} onChange={() => toggleExcludedWeekday(value)} aria-label={`排除${label}`} />
+          <span>{label.replace('周', '')}</span>
+        </label>)}
+      </div>
+    </fieldset>}
     {task.recurrenceType === 'weekly_quota' && <label className="field"><span>每周次数</span><input type="number" min="1" max="7" value={task.weeklyQuota ?? 1} onChange={(event) => setTask({ ...task, weeklyQuota: Number(event.target.value) })} /></label>}
   </>
 }
