@@ -1,0 +1,9 @@
+.DS_Store
+.superpowers/
+.worktrees/
+node_modules/
+.pnpm-store/
+dist/
+target/
+*.log
+test-results/
