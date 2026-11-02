@@ -75,6 +75,7 @@ describe('TimerPage', () => {
     expect(screen.queryByText('今天的专注')).not.toBeInTheDocument()
     expect(screen.queryByText('明天的任务')).not.toBeInTheDocument()
     expect(screen.queryByText('未安排日期的任务')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '今日概览' })).getByText('0 小时 30 分钟')).toBeInTheDocument()
     expect(screen.getAllByText('30 分钟')).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: '开始计时' })).toHaveClass('timer-primary-control')
     expect(screen.getByTestId('elapsed-time')).toHaveClass('timer-digits')
@@ -126,7 +127,7 @@ describe('TimerPage', () => {
 
     await settle()
     expect(within(screen.getByRole('region', { name: '今日概览' })).getByText('2')).toBeInTheDocument()
-    expect(screen.getByText('1 小时')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '今日概览' })).getByText('1 小时 0 分钟')).toBeInTheDocument()
     expect(screen.getAllByTestId('focus-record')).toHaveLength(2)
     expect(screen.getAllByTestId('focus-record')[0]).toHaveTextContent('12:00')
   })

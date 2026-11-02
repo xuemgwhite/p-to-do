@@ -92,7 +92,7 @@ export function TimerPage({ timerService, scheduleService, now = systemNow }: Ti
             <h2 id="timer-overview-title">今日概览</h2>
             <div className="timer-overview-card">
               <span><b>{state.records.length}</b><small>专注</small></span>
-              <span><b>{formatSummaryDuration(totalDuration)}</b><small>总时长</small></span>
+              <span><b>{formatTotalDuration(totalDuration)}</b><small>总时长</small></span>
             </div>
           </section>
           <section className="timer-records" aria-labelledby="timer-records-title">
@@ -148,6 +148,11 @@ function formatSummaryDuration(durationMs: number): string {
   const minutes = Math.floor(durationMs / 60_000)
   if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60} 小时`
   return `${minutes} 分钟`
+}
+
+function formatTotalDuration(durationMs: number): string {
+  const minutes = Math.floor(durationMs / 60_000)
+  return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`
 }
 
 function formatClock(value: string): string {
