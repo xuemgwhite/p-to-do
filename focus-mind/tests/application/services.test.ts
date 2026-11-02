@@ -506,6 +506,21 @@ describe('TimerService', () => {
 })
 
 describe('ScheduleService', () => {
+  it('does not repeat an unfinished ordinary task on every viewed date', async () => {
+    const scheduledOnce: Task = {
+      ...ordinaryTask,
+      id: 'task-once',
+      startDate: '2026-07-21',
+      endDate: '2026-07-21',
+      recurrenceType: 'none',
+    }
+    const service = new ScheduleService(repository({ tasks: [scheduledOnce] }))
+
+    expect((await service.getDay('2026-07-21', now)).pending.map((item) => item.task.id)).toEqual([scheduledOnce.id])
+    expect((await service.getDay('2026-07-22', now)).pending).toEqual([])
+    expect((await service.getDay('2026-07-23', new Date('2026-07-23T04:00:00.000Z'))).pending.map((item) => item.task.id)).toEqual([scheduledOnce.id])
+  })
+
   it('builds day pending/completed items and a weekly quota reminder', async () => {
     const dailyTask: Task = {
       ...ordinaryTask,

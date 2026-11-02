@@ -114,7 +114,7 @@ export class ScheduleService {
     this.repository = repository
   }
 
-  async getDay(date: LocalDate, _now: Date = new Date()): Promise<DaySchedule> {
+  async getDay(date: LocalDate, now: Date = new Date()): Promise<DaySchedule> {
     const catalog = await this.loadCatalog()
     const rangeOccurrences = await this.repository.listOccurrences(date, date)
     const dayStart = startOfLocalDay(date)
@@ -130,7 +130,7 @@ export class ScheduleService {
     for (const task of catalog.tasks) {
       const hierarchy = hierarchyFor(task, catalog)
       if (task.recurrenceType === 'none') {
-        const state = ordinaryStateOnDate(task, date)
+        const state = ordinaryStateOnDate(task, date, toLocalDate(now))
         if (state === null) continue
         const item = scheduleTaskItem(task, null, date, state, hierarchy, sessions)
         ;(state === 'completed' ? completed : pending).push(item)
@@ -327,12 +327,15 @@ function scheduleTaskItem(
   }
 }
 
-function ordinaryStateOnDate(task: Task, date: LocalDate): 'pending' | 'completed' | null {
+function ordinaryStateOnDate(task: Task, date: LocalDate, today: LocalDate): 'pending' | 'completed' | null {
   if (date < task.startDate) return null
-  if (task.completedAt === null) return 'pending'
+  if (task.completedAt === null) {
+    if (date === task.startDate) return 'pending'
+    return date === today && date > task.startDate ? 'pending' : null
+  }
   const completedDate = toLocalDate(new Date(task.completedAt))
-  if (date < completedDate) return 'pending'
-  return date === completedDate ? 'completed' : null
+  if (date === completedDate) return 'completed'
+  return date === task.startDate && date < completedDate ? 'pending' : null
 }
 
 function dedupeOrdinaryTasks(days: DaySchedule[], from: LocalDate, to: LocalDate, today: LocalDate): DaySchedule[] {

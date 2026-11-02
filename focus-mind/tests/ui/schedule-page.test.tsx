@@ -106,14 +106,14 @@ describe('SchedulePage day view', () => {
     setup()
 
     const pending = await screen.findByRole('region', { name: '待办' })
-    expect(pending).toHaveTextContent('逾期但未完成')
+    expect(pending).not.toHaveTextContent('逾期但未完成')
     expect(screen.getByRole('region', { name: '已完成' })).toHaveTextContent('当天已完成')
     const rows = within(pending).getAllByTestId(/^(schedule-task|weekly-reminder)-/)
     expect(rows.at(-1)).toHaveAttribute('data-testid', 'weekly-reminder-task-weekly')
-    expect(screen.getByRole('button', { name: '开始 逾期但未完成' })).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: '后一天' }))
     expect(await screen.findByRole('heading', { name: /7月18日/ })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '待办' })).toHaveTextContent('逾期但未完成')
     expect(screen.queryByText('今天', { selector: '.schedule-heading-kicker' })).not.toBeInTheDocument()
     expect(new URLSearchParams(window.location.search).get('date')).toBe('2026-07-18')
   })
